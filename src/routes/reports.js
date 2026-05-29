@@ -9,11 +9,15 @@ router.get('/export', authenticate, authorize('admin', 'operator'), async (req, 
   if (!startDate || !endDate) return res.status(400).json({ error: 'Se requiere startDate y endDate' });
   try {
     const db = getDb();
-    const resSnapshot = await db.collection('reservations').where('date', '>=', startDate).where('date', '<=', endDate).orderBy('date').orderBy('startTime').get();
+    const resSnapshot = await db.collection('reservations').where('date', '>=', startDate).where('date', '<=', endDate).get();
+    const sortedDocs = resSnapshot.docs.sort((a, b) => {
+    const da = a.data(), db2 = b.data();
+     return da.date === db2.date ? da.startTime.localeCompare(db2.startTime) : da.date.localeCompare(db2.date);
+});
     const spacesSnapshot = await db.collection('spaces').get();
     const spacesMap = {};
     spacesSnapshot.docs.forEach(d => { spacesMap[d.id] = d.data().name; });
-    const rows = resSnapshot.docs.map(d => {
+    const rows = sortedDocs.map(d => {
       const r = d.data();
       return { 'Codigo': r.confirmationCode || '', 'Evento': r.eventName, 'Responsable': r.responsible, 'Contacto': r.contact, 'Espacio': spacesMap[r.spaceId] || r.spaceId, 'Fecha': r.date, 'Hora inicio': r.startTime, 'Hora fin': r.endTime, 'Notas': r.notes || '', 'Creado por': r.createdByName || '' };
     });
