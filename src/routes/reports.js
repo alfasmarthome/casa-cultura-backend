@@ -57,3 +57,27 @@ router.get('/export', authenticate, authorize('admin', 'operator'), async (req, 
     res.status(500).json({ error: 'Error al generar reporte' });
   }
 });
+router.get('/monthly', authenticate, authorize('admin', 'operator'), async (req, res) => {
+  const { year, month } = req.query;
+  if (!year || !month) return res.status(400).json({ error: 'Se requiere year y month' });
+  const startDate = year + '-' + month.padStart(2, '0') + '-01';
+  const lastDay = new Date(year, month, 0).getDate();
+  const endDate = year + '-' + month.padStart(2, '0') + '-' + lastDay;
+  try {
+    const db = getDb();
+    const resSnapshot = await db.collection('reservations').where('date', '>=', startDate).where('date', '<=', endDate).get();
+    const spacesSnapshot = await db.collection('spaces').get();
+    const spacesMap = {};
+    spacesSnapshot.docs.forEach(d => { spacesMap[d.id] = d.data().name; });
+    const summary = {};
+    resSnapshot.docs.forEach(d => {
+      const r = d.data();
+      const spaceName = spacesMap[r.spaceId] || 'Desconocido';
+      if (!summary[spaceName]) summary[spaceName] = 0;
+      summary[spaceName]++;
+    });
+    res.json({ period: year + '-' + month, total: resSnapshot.size, bySpace: summary });
+  } catch (error) { res.status(500).json({ error: 'Error al generar resumen mensual' }); }
+});
+
+module.exports = router;
