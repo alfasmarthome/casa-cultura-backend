@@ -1,3 +1,9 @@
+const express = require('express');
+const router = express.Router();
+const XLSX = require('xlsx');
+const { getDb } = require('../config/firebase');
+const { authenticate, authorize } = require('../middleware/auth');
+
 router.get('/export', authenticate, authorize('admin', 'operator'), async (req, res) => {
   const { startDate, endDate } = req.query;
   if (!startDate || !endDate) return res.status(400).json({ error: 'Se requiere startDate y endDate' });
